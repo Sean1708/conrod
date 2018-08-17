@@ -1,7 +1,6 @@
 //! A widget for viewing and controlling graph structures.
 
 use {color, widget, Color, Colorable, Point, Positionable, Scalar, Widget, Ui, UiCell};
-use std::any::{Any, TypeId};
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::hash::Hash;
@@ -122,19 +121,19 @@ struct SocketLayouts {
     output: SocketLayout,
 }
 
-// A list of `widget::Id`s for a specific type.
+// A cached list of `widget::Id`s.
 #[derive(Default)]
-struct TypeWidgetIds {
-    // The index of the next `widget::Id` to use for this type.
+struct WidgetIds {
+    // The index of the next `widget::Id` to use.
     next_index: usize,
     // The list of widget IDs.
     widget_ids: Vec<widget::Id>,
 }
 
-impl TypeWidgetIds {
-    // Return the next `widget::Id` for a widget of the given type.
+impl WidgetIds {
+    // Return the next `widget::Id` for a widget.
     //
-    // If there are no more `Id`s available for the type, a new one will be generated from the
+    // If there are no more `Id`s available, a new one will be generated from the
     // given `widget::id::Generator`.
     fn next_id(&mut self, generator: &mut widget::id::Generator) -> widget::Id {
         loop {
@@ -155,8 +154,8 @@ struct WidgetIdMap<NI>
 where
     NI: NodeId,
 {
-    // A map from types to their available `widget::Id`s
-    type_widget_ids: HashMap<TypeId, TypeWidgetIds>,
+    // A list of cached `widget::Ids`.
+    widget_ids: WidgetIds,
     // A map from node IDs to their `widget::Id`.
     //
     // This is cleared at the end of each `Widget::update` and filled during the `Node`
@@ -168,15 +167,13 @@ impl<NI> WidgetIdMap<NI>
 where
     NI: NodeId,
 {
-    // Resets the index for every `TypeWidgetIds` list to `0`.
+    // Resets the index for the `widget::Id` list to `0`.
     //
     // This should be called at the beginning of the `Graph` update to ensure each widget
     // receives a unique ID. If this is not called, the graph will request more and more
     // `widget::Id`s every update and quickly bloat the `Ui`'s inner widget graph.
     fn reset_indices(&mut self) {
-        for type_widget_ids in self.type_widget_ids.values_mut() {
-            type_widget_ids.next_index = 0;
-        }
+        self.widget_ids.next_index = 0;
     }
 
     // Clears the `node_id` -> `widget_id` mappings so that they may be recreated during the next
@@ -185,33 +182,24 @@ where
         self.node_widget_ids.clear();
     }
 
-    // Return the next `widget::Id` for a widget of the given type.
+    // Return the next `widget::Id` for a widget.
     //
-    // If there are no more `Id`s available for the type, a new one will be generated from the
+    // If there are no more `Id`s available, a new one will be generated from the
     // given `widget::id::Generator`.
-    fn next_id_for_node<T>(&mut self, node_id: NI, generator: &mut widget::id::Generator) -> widget::Id
-    where
-        T: Any,
+    fn next_id_for_node(&mut self, node_id: NI, generator: &mut widget::id::Generator) -> widget::Id
     {
-        let type_id = TypeId::of::<T>();
-        let type_widget_ids = self.type_widget_ids.entry(type_id).or_insert_with(TypeWidgetIds::default);
-        let widget_id = type_widget_ids.next_id(generator);
+        let widget_id = self.widget_ids.next_id(generator);
         self.node_widget_ids.insert(node_id, widget_id);
         widget_id
     }
 
-    // Return the next `widget::Id` for a widget of the given type.
+    // Return the next `widget::Id` for a widget.
     //
-    // If there are no more `Id`s available for the type, a new one will be generated from the
+    // If there are no more `Id`s available, a new one will be generated from the
     // given `widget::id::Generator`.
-    fn next_id_for_edge<T>(&mut self, generator: &mut widget::id::Generator) -> widget::Id
-    where
-        T: Any,
+    fn next_id_for_edge(&mut self, generator: &mut widget::id::Generator) -> widget::Id
     {
-        let type_id = TypeId::of::<T>();
-        let type_widget_ids = self.type_widget_ids.entry(type_id).or_insert_with(TypeWidgetIds::default);
-        let widget_id = type_widget_ids.next_id(generator);
-        widget_id
+        self.widget_ids.next_id(generator)
     }
 }
 
@@ -593,10 +581,10 @@ where
     }
 }
 
-impl<'a, NI, W> NodeWidget<'a, NI, W>
+impl<'a, 'b, NI, W> NodeWidget<'a, NI, W>
 where
     NI: NodeId,
-    W: 'static + Widget,
+    W: Widget,
 {
     /// Retrieve the `widget::Id` that will be used to instantiate this node's widget.
     pub fn widget_id(&self, ui: &mut UiCell) -> widget::Id {
@@ -606,7 +594,7 @@ where
                 // Request a `widget::Id` from the `WidgetIdMap`.
                 let mut shared = self.node.shared.lock().unwrap();
                 let id = shared.widget_id_map
-                    .next_id_for_node::<W>(self.node_id, &mut ui.widget_id_generator());
+                    .next_id_for_node(self.node_id, &mut ui.widget_id_generator());
                 self.widget_id.set(Some(id));
                 id
             },
@@ -725,7 +713,7 @@ where
 impl<'a, NI, W> EdgeWidget<'a, NI, W>
 where
     NI: NodeId,
-    W: 'static + Widget,
+    W: Widget,
 {
     /// Retrieve the `widget::Id` that will be used to instantiate this edge's widget.
     pub fn widget_id(&self, ui: &mut UiCell) -> widget::Id {
@@ -734,7 +722,7 @@ where
             None => {
                 // Request a `widget::Id` from the `WidgetIdMap`.
                 let mut shared = self.edge.shared.lock().unwrap();
-                let id = shared.widget_id_map.next_id_for_edge::<W>(&mut ui.widget_id_generator());
+                let id = shared.widget_id_map.next_id_for_edge(&mut ui.widget_id_generator());
                 self.widget_id.set(Some(id));
                 id
             },
@@ -804,9 +792,9 @@ where
         let nodes = HashMap::new();
         let node_ids = Vec::new();
         let edges = Vec::new();
-        let type_widget_ids = HashMap::new();
+        let widget_ids = WidgetIds::default();
         let node_widget_ids = HashMap::new();
-        let widget_id_map = WidgetIdMap { type_widget_ids, node_widget_ids };
+        let widget_id_map = WidgetIdMap { widget_ids, node_widget_ids };
         let shared = Shared { events, nodes, node_ids, edges, widget_id_map };
         State {
             ids: Ids::new(id_gen),

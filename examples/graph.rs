@@ -22,7 +22,7 @@ mod feature {
         }
     }
 
-    type MyGraph = petgraph::Graph<&'static str, (usize, usize)>;
+    type MyGraph = petgraph::Graph<String, (usize, usize)>;
     type Layout = widget::graph::Layout<petgraph::graph::NodeIndex>;
 
     pub fn main() {
@@ -31,11 +31,11 @@ mod feature {
 
         // Demo Graph.
         let mut graph = MyGraph::new();
-        let a = graph.add_node("A");
-        let b = graph.add_node("B");
-        let c = graph.add_node("C");
-        let d = graph.add_node("D");
-        let e = graph.add_node("E");
+        let a = graph.add_node("A".into());
+        let b = graph.add_node("B".into());
+        let c = graph.add_node("C".into());
+        let d = graph.add_node("D".into());
+        let e = graph.add_node("E".into());
         graph.extend_with_edges(&[
             (a, c, (1, 0)),
             (a, d, (0, 1)),
