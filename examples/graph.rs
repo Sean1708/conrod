@@ -171,20 +171,20 @@ mod feature {
                 Event::Node(event) => match event {
                     // NodeEvent::Add(node_kind) => {
                     // },
-                    NodeEvent::Remove(node_id) => {
+                    NodeEvent::Remove(_) => {
                     },
                     NodeEvent::Dragged { node_id, to, .. } => {
                         *layout.get_mut(&node_id).unwrap() = to;
                     },
                 },
                 Event::Edge(event) => match event {
-                    EdgeEvent::AddStart(node_socket) => {
+                    EdgeEvent::AddStart(_) => {
                     },
-                    EdgeEvent::Add { start, end } => {
+                    EdgeEvent::Add { .. } => {
                     },
-                    EdgeEvent::Cancelled(node_socket) => {
+                    EdgeEvent::Cancelled(_) => {
                     },
-                    EdgeEvent::Remove { start, end } => {
+                    EdgeEvent::Remove { .. } => {
                     },
                 },
             }
