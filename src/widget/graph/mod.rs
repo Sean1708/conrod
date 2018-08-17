@@ -24,7 +24,7 @@ impl<T> NodeId for T where T: 'static + Copy + Clone + PartialEq + Eq + Hash + S
 ///
 /// All positions are relative to the centre of the `Graph` widget.
 ///
-/// Nodes can be moved by 
+/// Nodes can be moved by
 #[derive(Clone, Debug, PartialEq)]
 pub struct Layout<NI>
 where
@@ -352,7 +352,7 @@ pub struct Nodes<'a, NI: 'a + NodeId> {
     lifetime: PhantomData<&'a NI>,
 }
 
-// Node data stored within the 
+// Node data stored within the
 #[derive(Copy, Clone)]
 struct NodeInner {
     point: Point,
@@ -401,7 +401,7 @@ pub struct Edges<'a, NI: 'a + NodeId> {
 
 /// A context for an edge yielded during the edge instantiation stage.
 ///
-/// Tyis type can 
+/// Tyis type can
 pub struct Edge<'a, NI: NodeId> {
     // The `widget::Id` of the `Edge`'s parent `Graph` widget.
     graph_id: widget::Id,
@@ -463,7 +463,7 @@ impl<NI> SessionEvents<NI>
 where
     NI: NodeId,
 {
-    /// All events that have occurred since the last 
+    /// All events that have occurred since the last
     pub fn events(&self) -> Events<NI> {
         let shared = self.session.shared.upgrade().expect("failed to access `Shared` state");
         Events { shared, lifetime: PhantomData }
@@ -583,7 +583,7 @@ where
         self.point
     }
 
-    /// Specify the widget to use 
+    /// Specify the widget to use
     pub fn widget<W>(self, widget: W) -> NodeWidget<'a, NI, W> {
         NodeWidget {
             node: self,
@@ -667,7 +667,7 @@ where
         (self.start, self.end)
     }
 
-    /// Specify the widget to use 
+    /// Specify the widget to use
     pub fn widget<W>(self, widget: W) -> EdgeWidget<'a, NI, W> {
         EdgeWidget {
             edge: self,
